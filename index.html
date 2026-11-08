@@ -318,10 +318,19 @@ footer { margin-top: 30px; color: var(--ink-soft); font-size: 12.5px;}
 html { scroll-behavior: auto;}
 .chip,.toast { transition: none;}
 }
+
+.langswitch { display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 16px;}
+.langswitch button { border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft); border-radius: 999px; padding: 6px 15px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .15s, color .15s;}
+.langswitch button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent);}
+.langswitch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px;}
 </style>
 </head>
 <body>
 <div class="wrap">
+<div class="langswitch" role="group" aria-label="Language / 言語">
+<button type="button" id="ui-ja" aria-pressed="true">日本語</button>
+<button type="button" id="ui-en" aria-pressed="false">English</button>
+</div>
 <header>
 <h1>好きなアバターの<span class="accent">「もと」</span>を作る<br />プロンプト生成ツール</h1>
 <p class="lead">
@@ -770,6 +779,13 @@ return elines.join("\n");
 }
 
 function buildRequest() {
+if (uiLang === "en") {
+var styleEn = DICT.style[state.style].en;
+var charEn = DICT.character[state.character].en;
+return "Please create my avatar based on this image.\n" +
+"The source image is " + charEn + " as " + styleEn + ". Keeping the vibe and features exactly as in this image, " +
+"I'd love to see a few avatar candidates in a form that works well as an icon.";
+}
 var styleJa = DICT.style[state.style].ja;
 var charJa = DICT.character[state.character].ja;
 return "この画像を元に、私のアバターを作ってください。\n" +
@@ -807,7 +823,7 @@ render();
 document.querySelectorAll(".preset").forEach(function (btn) {
 btn.addEventListener("click", function () {
 applyState(PRESETS[btn.getAttribute("data-preset")]);
-showToast("プリセットを反映しました");
+showToast(U("toast_preset"));
 });
 });
 document.getElementById("randomBtn").addEventListener("click", function () {
@@ -820,14 +836,14 @@ next[group] = keys[Math.floor(Math.random() * keys.length)];
 if (["robot", "cat", "rabbit", "bear"].indexOf(next.character) >= 0) next.hair = "none";
 if (next.character === "mage") next.outfit = "robe";
 applyState(next);
-showToast("おまかせで組み合わせました");
+showToast(U("toast_random"));
 });
 document.getElementById("resetBtn").addEventListener("click", function () {
 applyState(DEFAULTS);
 document.getElementById("charName").value = "";
 document.getElementById("extraLook").value = "";
 render();
-showToast("最初の設定に戻しました");
+showToast(U("toast_reset"));
 });
 
 /* ---------- コピー ---------- */
@@ -848,7 +864,7 @@ ta.style.opacity = "0";
 document.body.appendChild(ta);
 ta.select();
 try { document.execCommand("copy"); showToast(doneMsg);}
-catch (e) { showToast("コピーできませんでした。長押しで選択してください");}
+catch (e) { showToast(U("toast_copyfail"));}
 document.body.removeChild(ta);
 }
 if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -858,13 +874,169 @@ fallback();
 }
 }
 document.getElementById("copyPromptBtn").addEventListener("click", function () {
-copyText(buildPrompt(), lang === "ja"? "プロンプトをコピーしました": "Prompt copied");
+copyText(buildPrompt(), U("toast_promptcopied"));
 });
 document.getElementById("copyRequestBtn").addEventListener("click", function () {
-copyText(buildRequest(), "Museへの依頼文をコピーしました");
+copyText(buildRequest(), U("toast_requestcopied"));
 });
 
+/* ---------- UI言語（ページ全体の表示言語） ---------- */
+var uiLang = "ja";
+
+var LEGEND = {
+style: { ja: "スタイル", en: "Style"},
+character: { ja: "キャラクター", en: "Character"},
+hair: { ja: "髪型", en: "Hairstyle"},
+hairColor: { ja: "髪の色（毛の色）", en: "Hair / fur color"},
+outfit: { ja: "服装", en: "Outfit"},
+accessory: { ja: "小物・トレードマーク", en: "Accessory / signature"},
+expression: { ja: "表情", en: "Expression"},
+mood: { ja: "全体の雰囲気", en: "Overall mood"},
+palette: { ja: "カラーテーマ", en: "Color theme"},
+framing: { ja: "構図", en: "Composition"},
+background: { ja: "背景", en: "Background"}
+};
+
+var CHIP = {
+style: { figure:{ja:"3Dフィギュア風",en:"3D figure"}, pixar:{ja:"ピクサー風3Dアニメ",en:"Pixar-style 3D"}, clay:{ja:"クレイモデル（粘土）風",en:"Clay model"}, anime3d:{ja:"アニメ3D（セルシェーディング）",en:"Cel-shaded 3D"}, lowpoly:{ja:"ローポリ・ゲーム風",en:"Low-poly game"}, plush:{ja:"ぬいぐるみ3D風",en:"Plush 3D"} },
+character: { girl:{ja:"女の子",en:"Girl"}, boy:{ja:"男の子",en:"Boy"}, robot:{ja:"ロボット",en:"Robot"}, cat:{ja:"猫",en:"Cat"}, rabbit:{ja:"うさぎ",en:"Rabbit"}, bear:{ja:"くま",en:"Bear"}, mage:{ja:"魔法使い",en:"Wizard"}, original:{ja:"オリジナル",en:"Original"} },
+hair: { long:{ja:"ロング",en:"Long"}, short:{ja:"ショート",en:"Short"}, twintail:{ja:"ツインテール",en:"Twin tails"}, ponytail:{ja:"ポニーテール",en:"Ponytail"}, bob:{ja:"ボブ",en:"Bob"}, bun:{ja:"お団子",en:"Bun"}, spiky:{ja:"ツンツンヘア",en:"Spiky"}, none:{ja:"なし",en:"None"} },
+hairColor: { black:{ja:"黒",en:"Black"}, brown:{ja:"茶",en:"Brown"}, blond:{ja:"金",en:"Blond"}, pink:{ja:"ピンク",en:"Pink"}, blue:{ja:"水色",en:"Light blue"}, white:{ja:"白・銀",en:"White · silver"}, green:{ja:"緑",en:"Green"}, orange:{ja:"オレンジ",en:"Orange"} },
+outfit: { casual:{ja:"カジュアル",en:"Casual"}, hoodie:{ja:"パーカー",en:"Hoodie"}, uniform:{ja:"制服風",en:"Uniform"}, kimono:{ja:"着物・和服",en:"Kimono"}, robe:{ja:"魔法使いのローブ",en:"Wizard robe"}, future:{ja:"近未来スーツ",en:"Futuristic suit"}, dress:{ja:"ドレス",en:"Dress"}, knit:{ja:"ニット・ゆるコーデ",en:"Knit · comfy"} },
+accessory: { none:{ja:"なし",en:"None"}, glasses:{ja:"眼鏡",en:"Glasses"}, catears:{ja:"猫耳",en:"Cat ears"}, hat:{ja:"帽子",en:"Hat"}, ribbon:{ja:"大きなリボン",en:"Big ribbon"}, scarf:{ja:"マフラー",en:"Scarf"}, wand:{ja:"星の杖",en:"Star wand"}, headphone:{ja:"ヘッドホン",en:"Headphones"} },
+expression: { smile:{ja:"にっこり笑顔",en:"Big smile"}, wink:{ja:"ウィンク",en:"Wink"}, genki:{ja:"元気いっぱい",en:"Energetic"}, cool:{ja:"クール",en:"Cool"}, relaxed:{ja:"ほんわか",en:"Relaxed"}, surprised:{ja:"びっくり顔",en:"Surprised"} },
+mood: { cute:{ja:"かわいい",en:"Cute"}, coolmood:{ja:"かっこいい",en:"Cool"}, yuru:{ja:"ゆるい",en:"Laid-back"}, mystic:{ja:"神秘的",en:"Mystical"}, pop:{ja:"ポップ",en:"Pop"}, elegant:{ja:"上品",en:"Elegant"} },
+palette: { pastel:{ja:"パステル",en:"Pastel"}, vivid:{ja:"ビビッド",en:"Vivid"}, mono:{ja:"モノトーン",en:"Monotone"}, warm:{ja:"暖色系",en:"Warm"}, cold:{ja:"寒色系",en:"Cool"}, earth:{ja:"アースカラー",en:"Earthy"} },
+framing: { full:{ja:"全身・正面（おすすめ）",en:"Full body · front (rec.)"}, bust:{ja:"バストアップ",en:"Bust-up"}, face:{ja:"顔アップ",en:"Face close-up"}, turnaround:{ja:"三面図（正面・横・後ろ）",en:"Turnaround (3 views)"} },
+background: { white:{ja:"白背景（おすすめ）",en:"White bg (rec.)"}, pastelbg:{ja:"単色パステル",en:"Solid pastel"}, studio:{ja:"スタジオ撮影風",en:"Studio"}, room:{ja:"部屋のインテリア",en:"Room interior"}, nature:{ja:"自然・屋外",en:"Outdoors"} }
+};
+
+var PRESET_LABELS = {
+"figure-girl": { t:{ja:"かわいいフィギュア女子",en:"Cute figure girl"}, d:{ja:"3Dフィギュア風 × ツインテール × パステル",en:"3D figure × twin tails × pastel"} },
+"robot-buddy": { t:{ja:"相棒ロボット",en:"Buddy robot"}, d:{ja:"ピクサー風3D × ロボット × ビビッドカラー",en:"Pixar 3D × robot × vivid"} },
+"cat-mascot": { t:{ja:"ゆる猫マスコット",en:"Chill cat mascot"}, d:{ja:"クレイモデル風 × 猫 × ほんわか",en:"Clay × cat × cozy"} },
+"mage": { t:{ja:"ちび魔法使い",en:"Chibi wizard"}, d:{ja:"アニメ3D風 × 魔法使い × 神秘的",en:"Anime 3D × wizard × mystical"} }
+};
+
+var UITEXT = {
+h1: { ja:'好きなアバターの<span class="accent">「もと」</span>を作る<br />プロンプト生成ツール', en:'Build the <span class="accent">base</span> for your<br />dream avatar &mdash; a prompt generator'},
+lead: { ja:"スタイルと特徴を選ぶだけで、GPT Image（ChatGPTの画像生成）に渡すプロンプトが組み上がります。生成した3Dモデル風の画像をMuseに渡せば、それを下敷きにアバター候補を作ってもらえます。", en:"Just pick a style and features, and a prompt for GPT Image (ChatGPT image generation) is assembled for you. Hand the resulting 3D-model-style image to Muse and it can build avatar candidates from it."},
+step1t:{ja:"選んでコピー",en:"Pick & copy"}, step1d:{ja:"このページで好みを選んで、プロンプトをコピーします。",en:"Choose your preferences here and copy the prompt."},
+step2t:{ja:"GPT Imageで生成",en:"Generate in GPT Image"}, step2d:{ja:"ChatGPTにプロンプトを貼って、3Dモデル風の画像を作ります。",en:"Paste the prompt into ChatGPT to create a 3D-model-style image."},
+step3t:{ja:"画像を保存",en:"Save the image"}, step3d:{ja:"気に入った1枚をスマホやPCに保存します。何枚か作って一番好きなものを。",en:"Save your favorite one to your phone or PC. Make a few and pick the best."},
+step4t:{ja:"Museに渡す",en:"Hand it to Muse"}, step4d:{ja:"保存した画像と、下の「Museへの依頼文」を一緒に送れば、アバター化をお願いできます。",en:"Send the saved image together with the “message for Muse” below to request your avatar."},
+hpreset:{ja:'まず試すなら <span class="tag">プリセット</span>',en:'Start with a <span class="tag">preset</span>'},
+hintpreset:{ja:"ワンタップで組み合わせが入ります。あとから自由に変えられます。",en:"One tap loads a combination. You can tweak everything afterwards."},
+randombtn:{ja:"🎲 おまかせで組み合わせる",en:"🎲 Surprise me"},
+resetbtn:{ja:"↺ 最初に戻す",en:"↺ Reset"},
+hstyle:{ja:"スタイルとキャラクター",en:"Style & character"},
+hintstyle:{ja:"「3Dモデルみたいな」質感がアバター化の下敷きに最適です。",en:"A “3D-model-like” texture works best as a base for an avatar."},
+charnamelabel:{ja:"キャラクターの名前・設定（任意）",en:"Character name / concept (optional)"},
+charnameph:{ja:"例：星屑を集める見習い錬金術師の女の子",en:"e.g. a trainee alchemist girl who collects stardust"},
+hlook:{ja:"見た目の特徴",en:"Appearance"},
+hintlook:{ja:"動物やロボットなら、髪型は「なし」のままでOKです。",en:"For animals or robots, leave the hairstyle as “None”."},
+extralooklabel:{ja:"その他の見た目メモ（任意）",en:"Other appearance notes (optional)"},
+extralookph:{ja:"例：左目だけ紫色、ほっぺに星のマーク、小さなリュックを背負っている",en:"e.g. left eye is purple, a star mark on the cheek, carrying a small backpack"},
+hmood:{ja:"表情・雰囲気・仕上がり",en:"Expression, mood & finish"},
+hintmood:{ja:"アバターに使うなら「全身・正面・白背景」が一番あとで使いやすい組み合わせです。",en:"For an avatar, “full body · front · white background” is the most reusable combo later."},
+hout:{ja:"生成プロンプト",en:"Generated prompt"},
+hintout:{ja:"選ぶたびに自動で組み替わります。そのままGPT Imageに貼って使えます。",en:"Rebuilds automatically as you choose. Paste it straight into GPT Image."},
+tabslabel:{ja:"プロンプトの言語",en:"Prompt language"},
+copypromptbtn:{ja:"プロンプトをコピーする",en:"Copy prompt"},
+houtreq:{ja:"画像ができたら、Museへの依頼文",en:"When the image is ready: message for Muse"},
+subreq:{ja:"保存した画像と一緒に、この文をMuseに送ってください。",en:"Send this message to Muse together with your saved image."},
+copyrequestbtn:{ja:"依頼文をコピーする",en:"Copy message"},
+footer:{ja:"コツ：1回で決めようとせず、同じプロンプトで何枚か生成して一番「らしい」1枚を選ぶのがおすすめです。顔の印象を変えたいときは、髪型・表情・カラーテーマの3つを変えると一番効きます。",en:"Tip: don’t settle on the first try &mdash; generate several with the same prompt and pick the most “you” one. To change the face impression, tweaking hairstyle, expression and color theme has the biggest effect."},
+toast_preset:{ja:"プリセットを反映しました",en:"Preset applied"},
+toast_random:{ja:"おまかせで組み合わせました",en:"Random combo applied"},
+toast_reset:{ja:"最初の設定に戻しました",en:"Reset to defaults"},
+toast_promptcopied:{ja:"プロンプトをコピーしました",en:"Prompt copied"},
+toast_requestcopied:{ja:"Museへの依頼文をコピーしました",en:"Message for Muse copied"},
+toast_copyfail:{ja:"コピーできませんでした。長押しで選択してください",en:"Couldn't copy. Long-press to select instead."}
+};
+
+function U(key) { return UITEXT[key][uiLang]; }
+
+function applyUILang() {
+document.documentElement.lang = uiLang;
+var setText = function (sel, val) { var el = document.querySelector(sel); if (el) el.textContent = val;};
+var setHtml = function (sel, val) { var el = document.querySelector(sel); if (el) el.innerHTML = val;};
+
+setHtml("header h1", U("h1"));
+setText("header .lead", U("lead"));
+
+var steps = document.querySelectorAll(".steps li");
+var sk = [["step1t","step1d"],["step2t","step2d"],["step3t","step3d"],["step4t","step4d"]];
+steps.forEach(function (li, i) {
+if (!sk[i]) return;
+var b = li.querySelector("b"), p = li.querySelector("p");
+if (b) b.textContent = U(sk[i][0]);
+if (p) p.textContent = U(sk[i][1]);
+});
+
+setHtml('section[aria-labelledby="h-preset"] h2', U("hpreset"));
+setText('section[aria-labelledby="h-preset"] .hint', U("hintpreset"));
+setText("#randomBtn", U("randombtn"));
+setText("#resetBtn", U("resetbtn"));
+
+document.querySelectorAll(".preset").forEach(function (btn) {
+var lab = PRESET_LABELS[btn.getAttribute("data-preset")];
+if (!lab) return;
+var b = btn.querySelector("b"), s = btn.querySelector("span");
+if (b) b.textContent = lab.t[uiLang];
+if (s) s.textContent = lab.d[uiLang];
+});
+
+setText('section[aria-labelledby="h-style"] h2', U("hstyle"));
+setText('section[aria-labelledby="h-style"] .hint', U("hintstyle"));
+setText('label[for="charName"]', U("charnamelabel"));
+var cn = document.getElementById("charName"); if (cn) cn.setAttribute("placeholder", U("charnameph"));
+
+setText('section[aria-labelledby="h-look"] h2', U("hlook"));
+setText('section[aria-labelledby="h-look"] .hint', U("hintlook"));
+setText('label[for="extraLook"]', U("extralooklabel"));
+var ex = document.getElementById("extraLook"); if (ex) ex.setAttribute("placeholder", U("extralookph"));
+
+setText('section[aria-labelledby="h-mood"] h2', U("hmood"));
+setText('section[aria-labelledby="h-mood"] .hint', U("hintmood"));
+
+setText("#h-out", U("hout"));
+setText('section[aria-labelledby="h-out"] .hint', U("hintout"));
+var tabsBox = document.querySelector('section[aria-labelledby="h-out"] .tabs');
+if (tabsBox) tabsBox.setAttribute("aria-label", U("tabslabel"));
+setText("#copyPromptBtn", U("copypromptbtn"));
+var h3 = document.querySelector('section[aria-labelledby="h-out"] h3');
+if (h3) h3.textContent = U("houtreq");
+setText('section[aria-labelledby="h-out"] .sub', U("subreq"));
+setText("#copyRequestBtn", U("copyrequestbtn"));
+setText("footer", U("footer"));
+
+document.querySelectorAll("fieldset[data-group]").forEach(function (fs) {
+var g = fs.getAttribute("data-group");
+var lg = fs.querySelector("legend");
+if (lg && LEGEND[g]) lg.textContent = LEGEND[g][uiLang];
+fs.querySelectorAll(".chip").forEach(function (chip) {
+var v = chip.getAttribute("data-value");
+if (CHIP[g] && CHIP[g][v]) chip.textContent = CHIP[g][v][uiLang];
+});
+});
+
+var uiJaBtn = document.getElementById("ui-ja");
+var uiEnBtn = document.getElementById("ui-en");
+if (uiJaBtn) uiJaBtn.setAttribute("aria-pressed", uiLang === "ja"? "true": "false");
+if (uiEnBtn) uiEnBtn.setAttribute("aria-pressed", uiLang === "en"? "true": "false");
+}
+
+function setUILang(next) {
+uiLang = next;
+applyUILang();
+setLang(next); /* プロンプト出力の言語もページ言語に合わせる（タブで個別変更も可） */
+}
+document.getElementById("ui-ja").addEventListener("click", function () { setUILang("ja");});
+document.getElementById("ui-en").addEventListener("click", function () { setUILang("en");});
+
 /* ---------- 初期化 ---------- */
+applyUILang();
 applyState(DEFAULTS);
 })();
 </script>
