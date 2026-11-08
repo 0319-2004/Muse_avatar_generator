@@ -1,0 +1,872 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:," />
+<title>アバタープロンプト生成ツール</title>
+<style>
+:root {
+--bg: #fdfbf7;
+--surface: #ffffff;
+--surface-2: #f4efe7;
+--ink: #23201c;
+--ink-soft: #5d564d;
+--line: #e3dccf;
+--accent: #e4572e;
+--accent-ink: #ffffff;
+--accent-soft: #fdeee7;
+--teal: #0e7c6f;
+--teal-soft: #e2f2ef;
+--chip-bg: #ffffff;
+--chip-border: #d8d0c0;
+--prompt-bg: #26221d;
+--prompt-ink: #f5efe4;
+--radius: 14px;
+--shadow: 0 2px 10px rgba(60, 45, 20, 0.07);
+}
+@media (prefers-color-scheme: dark) {
+:root {
+--bg: #171512;
+--surface: #211e1a;
+--surface-2: #2a2621;
+--ink: #f2ede3;
+--ink-soft: #b8b0a1;
+--line: #3a352d;
+--accent: #ff7a4d;
+--accent-ink: #221206;
+--accent-soft: #3a241a;
+--teal: #3fc1ae;
+--teal-soft: #173330;
+--chip-bg: #26231f;
+--chip-border: #4a443a;
+--prompt-bg: #100e0c;
+--prompt-ink: #f5efe4;
+--shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+}
+* { box-sizing: border-box;}
+html { scroll-behavior: smooth;}
+body {
+margin: 0;
+background: var(--bg);
+color: var(--ink);
+font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP",
+"Yu Gothic UI", "Yu Gothic", system-ui, sans-serif;
+line-height: 1.65;
+-webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1160px; margin: 0 auto; padding: 28px 18px 64px;}
+
+/* ---------- ヘッダー ---------- */
+header { margin-bottom: 22px;}
+h1 {
+font-size: clamp(26px, 4.5vw, 38px);
+line-height: 1.25;
+margin: 0 0 10px;
+letter-spacing: 0.01em;
+}
+h1.accent { color: var(--accent);}
+.lead { color: var(--ink-soft); font-size: 15.5px; margin: 0; max-width: 46em;}
+
+/* ---------- 手順 ---------- */
+.steps {
+display: grid;
+grid-template-columns: repeat(4, 1fr);
+gap: 10px;
+margin: 22px 0 26px;
+padding: 0;
+list-style: none;
+}
+.steps li {
+background: var(--surface);
+border: 1px solid var(--line);
+border-radius: var(--radius);
+padding: 12px 14px;
+box-shadow: var(--shadow);
+font-size: 13.5px;
+}
+.steps.num {
+display: inline-flex;
+align-items: center;
+justify-content: center;
+width: 22px; height: 22px;
+border-radius: 50%;
+background: var(--accent);
+color: var(--accent-ink);
+font-weight: 700;
+font-size: 12.5px;
+margin-right: 7px;
+vertical-align: 2px;
+}
+.steps b { display: inline;}
+.steps p { margin: 6px 0 0; color: var(--ink-soft); font-size: 12.5px; line-height: 1.55;}
+
+/* ---------- レイアウト ---------- */
+.layout {
+display: grid;
+grid-template-columns: minmax(0, 1fr) minmax(0, 430px);
+gap: 22px;
+align-items: start;
+}
+
+/* ---------- フォーム ---------- */
+.panel {
+background: var(--surface);
+border: 1px solid var(--line);
+border-radius: var(--radius);
+box-shadow: var(--shadow);
+padding: 20px 20px 8px;
+margin-bottom: 18px;
+}
+.panel h2 {
+font-size: 16.5px;
+margin: 0 0 4px;
+display: flex;
+align-items: center;
+gap: 8px;
+}
+.panel h2.tag {
+font-size: 11px;
+font-weight: 700;
+color: var(--teal);
+background: var(--teal-soft);
+border-radius: 999px;
+padding: 2px 9px;
+}
+.panel.hint { color: var(--ink-soft); font-size: 13px; margin: 0 0 14px;}
+fieldset { border: 0; margin: 0 0 16px; padding: 0;}
+legend,.field-label {
+font-size: 13px;
+font-weight: 700;
+margin-bottom: 8px;
+padding: 0;
+display: block;
+}
+.chips { display: flex; flex-wrap: wrap; gap: 8px;}
+.chip {
+appearance: none;
+border: 1px solid var(--chip-border);
+background: var(--chip-bg);
+color: var(--ink);
+border-radius: 999px;
+padding: 7px 14px;
+font-size: 13.5px;
+font-family: inherit;
+cursor: pointer;
+line-height: 1.3;
+transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.chip:hover { border-color: var(--accent);}
+.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px;}
+.chip[aria-pressed="true"] {
+background: var(--accent);
+border-color: var(--accent);
+color: var(--accent-ink);
+font-weight: 700;
+}
+.chip.teal[aria-pressed="true"] { background: var(--teal); border-color: var(--teal); color: #fff;}
+@media (prefers-color-scheme: dark) {
+.chip.teal[aria-pressed="true"] { color: #0c2420;}
+}
+input[type="text"], textarea {
+width: 100%;
+border: 1px solid var(--chip-border);
+background: var(--chip-bg);
+color: var(--ink);
+border-radius: 10px;
+padding: 10px 12px;
+font-size: 14.5px;
+font-family: inherit;
+line-height: 1.6;
+}
+textarea { resize: vertical; min-height: 64px;}
+input[type="text"]:focus, textarea:focus {
+outline: 2px solid var(--accent);
+outline-offset: 0;
+border-color: transparent;
+}
+.field { margin-bottom: 16px;}
+
+.btn-row { display: flex; flex-wrap: wrap; gap: 10px; margin: 4px 0 18px;}
+.btn {
+appearance: none;
+border-radius: 999px;
+border: 1px solid var(--chip-border);
+background: var(--surface-2);
+color: var(--ink);
+font-family: inherit;
+font-size: 13.5px;
+font-weight: 700;
+padding: 9px 18px;
+cursor: pointer;
+}
+.btn:hover { border-color: var(--accent);}
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px;}
+
+.presets { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;}
+.preset {
+text-align: left;
+border: 1px solid var(--line);
+background: var(--surface-2);
+border-radius: 12px;
+padding: 12px 14px;
+cursor: pointer;
+font-family: inherit;
+color: var(--ink);
+}
+.preset:hover { border-color: var(--accent);}
+.preset:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px;}
+.preset b { display: block; font-size: 14px; margin-bottom: 2px;}
+.preset span { font-size: 12.5px; color: var(--ink-soft); line-height: 1.5; display: block;}
+
+/* ---------- 出力 ---------- */
+.output { position: sticky; top: 16px;}
+.output.panel { padding-bottom: 20px;}
+.tabs { display: flex; gap: 6px; margin-bottom: 12px;}
+.tab {
+appearance: none;
+border: 1px solid var(--chip-border);
+background: var(--chip-bg);
+color: var(--ink-soft);
+border-radius: 999px;
+padding: 6px 16px;
+font-size: 13px;
+font-weight: 700;
+font-family: inherit;
+cursor: pointer;
+}
+.tab[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink);}
+.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px;}
+.prompt-box {
+background: var(--prompt-bg);
+color: var(--prompt-ink);
+border-radius: 12px;
+padding: 16px;
+font-size: 14px;
+line-height: 1.8;
+white-space: pre-wrap;
+word-break: break-word;
+min-height: 180px;
+margin: 0 0 14px;
+}
+.copy-btn {
+appearance: none;
+width: 100%;
+border: 0;
+border-radius: 12px;
+background: var(--accent);
+color: var(--accent-ink);
+font-family: inherit;
+font-size: 15.5px;
+font-weight: 700;
+padding: 13px 16px;
+cursor: pointer;
+}
+.copy-btn:hover { filter: brightness(1.06);}
+.copy-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px;}
+.copy-btn.secondary { background: var(--teal); color: #fff; margin-top: 10px;}
+@media (prefers-color-scheme: dark) {
+.copy-btn.secondary { color: #0c2420;}
+}
+.request-box {
+background: var(--teal-soft);
+border-radius: 12px;
+padding: 14px 16px;
+font-size: 13.5px;
+line-height: 1.75;
+white-space: pre-wrap;
+word-break: break-word;
+margin: 0 0 4px;
+}
+.output h3 { font-size: 14.5px; margin: 20px 0 8px;}
+.output.sub { font-size: 12.5px; color: var(--ink-soft); margin: 0 0 10px;}
+
+.toast {
+position: fixed;
+left: 50%;
+bottom: 26px;
+transform: translate(-50%, 20px);
+background: var(--ink);
+color: var(--bg);
+font-size: 14px;
+font-weight: 700;
+padding: 11px 22px;
+border-radius: 999px;
+opacity: 0;
+pointer-events: none;
+transition: opacity 0.25s, transform 0.25s;
+z-index: 50;
+box-shadow: var(--shadow);
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0);}
+
+footer { margin-top: 30px; color: var(--ink-soft); font-size: 12.5px;}
+
+@media (max-width: 900px) {
+.layout { grid-template-columns: 1fr;}
+.output { position: static;}
+.steps { grid-template-columns: 1fr 1fr;}
+}
+@media (max-width: 520px) {
+.steps { grid-template-columns: 1fr;}
+.presets { grid-template-columns: 1fr;}
+.wrap { padding: 20px 14px 48px;}
+}
+@media (prefers-reduced-motion: reduce) {
+html { scroll-behavior: auto;}
+.chip,.toast { transition: none;}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+<h1>好きなアバターの<span class="accent">「もと」</span>を作る<br />プロンプト生成ツール</h1>
+<p class="lead">
+スタイルと特徴を選ぶだけで、GPT Image（ChatGPTの画像生成）に渡すプロンプトが組み上がります。
+生成した3Dモデル風の画像をMuseに渡せば、それを下敷きにアバター候補を作ってもらえます。
+</p>
+</header>
+
+<ol class="steps">
+<li>
+<span class="num">1</span><b>選んでコピー</b>
+<p>このページで好みを選んで、プロンプトをコピーします。</p>
+</li>
+<li>
+<span class="num">2</span><b>GPT Imageで生成</b>
+<p>ChatGPTにプロンプトを貼って、3Dモデル風の画像を作ります。</p>
+</li>
+<li>
+<span class="num">3</span><b>画像を保存</b>
+<p>気に入った1枚をスマホやPCに保存します。何枚か作って一番好きなものを。</p>
+</li>
+<li>
+<span class="num">4</span><b>Museに渡す</b>
+<p>保存した画像と、下の「Museへの依頼文」を一緒に送れば、アバター化をお願いできます。</p>
+</li>
+</ol>
+
+<div class="layout">
+<!-- ============ フォーム ============ -->
+<div>
+<section class="panel" aria-labelledby="h-preset">
+<h2 id="h-preset">まず試すなら <span class="tag">プリセット</span></h2>
+<p class="hint">ワンタップで組み合わせが入ります。あとから自由に変えられます。</p>
+<div class="presets">
+<button type="button" class="preset" data-preset="figure-girl">
+<b>かわいいフィギュア女子</b>
+<span>3Dフィギュア風 × ツインテール × パステル</span>
+</button>
+<button type="button" class="preset" data-preset="robot-buddy">
+<b>相棒ロボット</b>
+<span>ピクサー風3D × ロボット × ビビッドカラー</span>
+</button>
+<button type="button" class="preset" data-preset="cat-mascot">
+<b>ゆる猫マスコット</b>
+<span>クレイモデル風 × 猫 × ほんわか</span>
+</button>
+<button type="button" class="preset" data-preset="mage">
+<b>ちび魔法使い</b>
+<span>アニメ3D風 × 魔法使い × 神秘的</span>
+</button>
+</div>
+<div class="btn-row">
+<button type="button" class="btn" id="randomBtn">🎲 おまかせで組み合わせる</button>
+<button type="button" class="btn" id="resetBtn">↺ 最初に戻す</button>
+</div>
+</section>
+
+<section class="panel" aria-labelledby="h-style">
+<h2 id="h-style">スタイルとキャラクター</h2>
+<p class="hint">「3Dモデルみたいな」質感がアバター化の下敷きに最適です。</p>
+
+<fieldset data-group="style">
+<legend>スタイル</legend>
+<div class="chips">
+<button type="button" class="chip" data-value="figure">3Dフィギュア風</button>
+<button type="button" class="chip" data-value="pixar">ピクサー風3Dアニメ</button>
+<button type="button" class="chip" data-value="clay">クレイモデル（粘土）風</button>
+<button type="button" class="chip" data-value="anime3d">アニメ3D（セルシェーディング）</button>
+<button type="button" class="chip" data-value="lowpoly">ローポリ・ゲーム風</button>
+<button type="button" class="chip" data-value="plush">ぬいぐるみ3D風</button>
+</div>
+</fieldset>
+
+<fieldset data-group="character">
+<legend>キャラクター</legend>
+<div class="chips">
+<button type="button" class="chip" data-value="girl">女の子</button>
+<button type="button" class="chip" data-value="boy">男の子</button>
+<button type="button" class="chip" data-value="robot">ロボット</button>
+<button type="button" class="chip" data-value="cat">猫</button>
+<button type="button" class="chip" data-value="rabbit">うさぎ</button>
+<button type="button" class="chip" data-value="bear">くま</button>
+<button type="button" class="chip" data-value="mage">魔法使い</button>
+<button type="button" class="chip" data-value="original">オリジナル</button>
+</div>
+</fieldset>
+
+<div class="field">
+<label class="field-label" for="charName">キャラクターの名前・設定（任意）</label>
+<input type="text" id="charName" placeholder="例：星屑を集める見習い錬金術師の女の子" />
+</div>
+</section>
+
+<section class="panel" aria-labelledby="h-look">
+<h2 id="h-look">見た目の特徴</h2>
+<p class="hint">動物やロボットなら、髪型は「なし」のままでOKです。</p>
+
+<fieldset data-group="hair">
+<legend>髪型</legend>
+<div class="chips">
+<button type="button" class="chip" data-value="long">ロング</button>
+<button type="button" class="chip" data-value="short">ショート</button>
+<button type="button" class="chip" data-value="twintail">ツインテール</button>
+<button type="button" class="chip" data-value="ponytail">ポニーテール</button>
+<button type="button" class="chip" data-value="bob">ボブ</button>
+<button type="button" class="chip" data-value="bun">お団子</button>
+<button type="button" class="chip" data-value="spiky">ツンツンヘア</button>
+<button type="button" class="chip" data-value="none">なし</button>
+</div>
+</fieldset>
+
+<fieldset data-group="hairColor">
+<legend>髪の色（毛の色）</legend>
+<div class="chips">
+<button type="button" class="chip" data-value="black">黒</button>
+<button type="button" class="chip" data-value="brown">茶</button>
+<button type="button" class="chip" data-value="blond">金</button>
+<button type="button" class="chip" data-value="pink">ピンク</button>
+<button type="button" class="chip" data-value="blue">水色</button>
+<button type="button" class="chip" data-value="white">白・銀</button>
+<button type="button" class="chip" data-value="green">緑</button>
+<button type="button" class="chip" data-value="orange">オレンジ</button>
+</div>
+</fieldset>
+
+<fieldset data-group="outfit">
+<legend>服装</legend>
+<div class="chips">
+<button type="button" class="chip" data-value="casual">カジュアル</button>
+<button type="button" class="chip" data-value="hoodie">パーカー</button>
+<button type="button" class="chip" data-value="uniform">制服風</button>
+<button type="button" class="chip" data-value="kimono">着物・和服</button>
+<button type="button" class="chip" data-value="robe">魔法使いのローブ</button>
+<button type="button" class="chip" data-value="future">近未来スーツ</button>
+<button type="button" class="chip" data-value="dress">ドレス</button>
+<button type="button" class="chip" data-value="knit">ニット・ゆるコーデ</button>
+</div>
+</fieldset>
+
+<fieldset data-group="accessory">
+<legend>小物・トレードマーク</legend>
+<div class="chips">
+<button type="button" class="chip" data-value="none">なし</button>
+<button type="button" class="chip" data-value="glasses">眼鏡</button>
+<button type="button" class="chip" data-value="catears">猫耳</button>
+<button type="button" class="chip" data-value="hat">帽子</button>
+<button type="button" class="chip" data-value="ribbon">大きなリボン</button>
+<button type="button" class="chip" data-value="scarf">マフラー</button>
+<button type="button" class="chip" data-value="wand">星の杖</button>
+<button type="button" class="chip" data-value="headphone">ヘッドホン</button>
+</div>
+</fieldset>
+
+<div class="field">
+<label class="field-label" for="extraLook">その他の見た目メモ（任意）</label>
+<textarea id="extraLook" placeholder="例：左目だけ紫色、ほっぺに星のマーク、小さなリュックを背負っている"></textarea>
+</div>
+</section>
+
+<section class="panel" aria-labelledby="h-mood">
+<h2 id="h-mood">表情・雰囲気・仕上がり</h2>
+<p class="hint">アバターに使うなら「全身・正面・白背景」が一番あとで使いやすい組み合わせです。</p>
+
+<fieldset data-group="expression">
+<legend>表情</legend>
+<div class="chips">
+<button type="button" class="chip" data-value="smile">にっこり笑顔</button>
+<button type="button" class="chip" data-value="wink">ウィンク</button>
+<button type="button" class="chip" data-value="genki">元気いっぱい</button>
+<button type="button" class="chip" data-value="cool">クール</button>
+<button type="button" class="chip" data-value="relaxed">ほんわか</button>
+<button type="button" class="chip" data-value="surprised">びっくり顔</button>
+</div>
+</fieldset>
+
+<fieldset data-group="mood">
+<legend>全体の雰囲気</legend>
+<div class="chips">
+<button type="button" class="chip" data-value="cute">かわいい</button>
+<button type="button" class="chip" data-value="coolmood">かっこいい</button>
+<button type="button" class="chip" data-value="yuru">ゆるい</button>
+<button type="button" class="chip" data-value="mystic">神秘的</button>
+<button type="button" class="chip" data-value="pop">ポップ</button>
+<button type="button" class="chip" data-value="elegant">上品</button>
+</div>
+</fieldset>
+
+<fieldset data-group="palette">
+<legend>カラーテーマ</legend>
+<div class="chips">
+<button type="button" class="chip" data-value="pastel">パステル</button>
+<button type="button" class="chip" data-value="vivid">ビビッド</button>
+<button type="button" class="chip" data-value="mono">モノトーン</button>
+<button type="button" class="chip" data-value="warm">暖色系</button>
+<button type="button" class="chip" data-value="cold">寒色系</button>
+<button type="button" class="chip" data-value="earth">アースカラー</button>
+</div>
+</fieldset>
+
+<fieldset data-group="framing">
+<legend>構図</legend>
+<div class="chips">
+<button type="button" class="chip" data-value="full">全身・正面（おすすめ）</button>
+<button type="button" class="chip" data-value="bust">バストアップ</button>
+<button type="button" class="chip" data-value="face">顔アップ</button>
+<button type="button" class="chip" data-value="turnaround">三面図（正面・横・後ろ）</button>
+</div>
+</fieldset>
+
+<fieldset data-group="background">
+<legend>背景</legend>
+<div class="chips">
+<button type="button" class="chip" data-value="white">白背景（おすすめ）</button>
+<button type="button" class="chip" data-value="pastelbg">単色パステル</button>
+<button type="button" class="chip" data-value="studio">スタジオ撮影風</button>
+<button type="button" class="chip" data-value="room">部屋のインテリア</button>
+<button type="button" class="chip" data-value="nature">自然・屋外</button>
+</div>
+</fieldset>
+</section>
+</div>
+
+<!-- ============ 出力 ============ -->
+<div class="output">
+<section class="panel" aria-labelledby="h-out">
+<h2 id="h-out">生成プロンプト</h2>
+<p class="hint">選ぶたびに自動で組み替わります。そのままGPT Imageに貼って使えます。</p>
+<div class="tabs" role="tablist" aria-label="プロンプトの言語">
+<button type="button" class="tab" role="tab" id="tab-ja" aria-selected="true">日本語</button>
+<button type="button" class="tab" role="tab" id="tab-en" aria-selected="false">English</button>
+</div>
+<p class="prompt-box" id="promptOut" aria-live="polite"></p>
+<button type="button" class="copy-btn" id="copyPromptBtn">プロンプトをコピーする</button>
+
+<h3>画像ができたら、Museへの依頼文</h3>
+<p class="sub">保存した画像と一緒に、この文をMuseに送ってください。</p>
+<p class="request-box" id="requestOut"></p>
+<button type="button" class="copy-btn secondary" id="copyRequestBtn">依頼文をコピーする</button>
+</section>
+</div>
+</div>
+
+<footer>
+コツ：1回で決めようとせず、同じプロンプトで何枚か生成して一番「らしい」1枚を選ぶのがおすすめです。
+顔の印象を変えたいときは、髪型・表情・カラーテーマの3つを変えると一番効きます。
+</footer>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+"use strict";
+
+/* ---------- 辞書 ---------- */
+var DICT = {
+style: {
+figure: { ja: "高品質な3Dフィギュア（コレクタブル・ビニールトイ）風の3Dモデル", en: "a high-quality 3D collectible vinyl figure model"},
+pixar: { ja: "ピクサー風3Dアニメーションのキャラクター", en: "a Pixar-style 3D animated character"},
+clay: { ja: "手作り感のあるクレイモデル（粘土細工）風の3Dキャラクター", en: "a handmade claymation-style 3D character with a soft clay texture"},
+anime3d: { ja: "セルシェーディングのアニメ風3Dキャラクター", en: "a cel-shaded anime-style 3D character"},
+lowpoly: { ja: "ローポリゴンの3Dゲームキャラクター", en: "a low-poly 3D game character"},
+plush: { ja: "ぬいぐるみを3Dモデル化したような、柔らかな質感のキャラクター", en: "a soft plush-toy-like 3D character with fuzzy textures"}
+},
+character: {
+girl: { ja: "女の子", en: "a girl"},
+boy: { ja: "男の子", en: "a boy"},
+robot: { ja: "小型ロボット", en: "a small friendly robot"},
+cat: { ja: "猫のマスコットキャラクター", en: "a cat mascot character"},
+rabbit: { ja: "うさぎのマスコットキャラクター", en: "a rabbit mascot character"},
+bear: { ja: "くまのマスコットキャラクター", en: "a bear mascot character"},
+mage: { ja: "ちび魔法使い", en: "a chibi wizard"},
+original: { ja: "オリジナルキャラクター", en: "an original character"}
+},
+hair: {
+long: { ja: "長いロングヘア", en: "long flowing hair"},
+short: { ja: "ショートヘア", en: "short hair"},
+twintail: { ja: "ツインテール", en: "twin tails"},
+ponytail: { ja: "ポニーテール", en: "a ponytail"},
+bob: { ja: "ボブカット", en: "a bob haircut"},
+bun: { ja: "お団子ヘア", en: "a hair bun"},
+spiky: { ja: "ツンツンヘア", en: "spiky hair"},
+none: { ja: "", en: ""}
+},
+hairColor: {
+black: { ja: "黒色", en: "black"},
+brown: { ja: "茶色", en: "brown"},
+blond: { ja: "金色", en: "blond"},
+pink: { ja: "ピンク色", en: "pink"},
+blue: { ja: "水色", en: "light blue"},
+white: { ja: "白銀色", en: "silvery white"},
+green: { ja: "緑色", en: "green"},
+orange: { ja: "オレンジ色", en: "orange"}
+},
+outfit: {
+casual: { ja: "カジュアルな服装", en: "a casual outfit"},
+hoodie: { ja: "オーバーサイズのパーカー姿", en: "an oversized hoodie outfit"},
+uniform: { ja: "制服風の服装", en: "a school-uniform-style outfit"},
+kimono: { ja: "着物（和服）姿", en: "a kimono outfit"},
+robe: { ja: "魔法使いのローブ姿", en: "a wizard robe"},
+future: { ja: "近未来的なスーツ姿", en: "a futuristic suit"},
+dress: { ja: "ドレス姿", en: "an elegant dress"},
+knit: { ja: "ゆるいニットコーデ", en: "a cozy loose knit outfit"}
+},
+accessory: {
+none: { ja: "", en: ""},
+glasses: { ja: "眼鏡をかけている", en: "wearing glasses"},
+catears: { ja: "猫耳をつけている", en: "wearing cat ears"},
+hat: { ja: "帽子をかぶっている", en: "wearing a hat"},
+ribbon: { ja: "大きなリボンがトレードマーク", en: "with a big ribbon as a signature accessory"},
+scarf: { ja: "マフラーを巻いている", en: "wearing a scarf"},
+wand: { ja: "星の杖を持っている", en: "holding a star-tipped wand"},
+headphone: { ja: "ヘッドホンをつけている", en: "wearing headphones"}
+},
+expression: {
+smile: { ja: "にっこりした笑顔", en: "a big cheerful smile"},
+wink: { ja: "ウィンクした表情", en: "winking playfully"},
+genki: { ja: "元気いっぱいの表情", en: "an energetic, lively expression"},
+cool: { ja: "クールな表情", en: "a cool, confident expression"},
+relaxed: { ja: "ほんわかした穏やかな表情", en: "a gentle, relaxed expression"},
+surprised: { ja: "少し驚いた表情", en: "a slightly surprised expression"}
+},
+mood: {
+cute: { ja: "かわいい", en: "cute"},
+coolmood:{ ja: "かっこいい", en: "cool"},
+yuru: { ja: "ゆるくて癒やされる", en: "laid-back and soothing"},
+mystic: { ja: "神秘的で幻想的", en: "mystical and dreamy"},
+pop: { ja: "ポップで明るい", en: "pop and cheerful"},
+elegant: { ja: "上品で洗練された", en: "elegant and refined"}
+},
+palette: {
+pastel: { ja: "パステルカラー", en: "a pastel color palette"},
+vivid: { ja: "ビビッドカラー", en: "a vivid color palette"},
+mono: { ja: "モノトーン", en: "a monochrome palette"},
+warm: { ja: "暖色系の色合い", en: "warm tones"},
+cold: { ja: "寒色系の色合い", en: "cool tones"},
+earth: { ja: "アースカラー", en: "earthy tones"}
+},
+framing: {
+full: { ja: "全身が入る構図で、正面を向いて立っている", en: "full-body shot, standing and facing the camera"},
+bust: { ja: "胸から上のバストアップ、正面を向いている", en: "bust-up shot, facing the camera"},
+face: { ja: "顔のアップ、正面を向いている", en: "close-up of the face, facing the camera"},
+turnaround: { ja: "キャラクター設定資料のような三面図（正面・横向き・後ろ姿を横並び）", en: "a character turnaround sheet (front, side and back views side by side)"}
+},
+background: {
+white: { ja: "背景は真っ白な無地で、キャラクター以外は何も描かない", en: "plain pure-white background with nothing else in the scene"},
+pastelbg:{ ja: "背景は単色のパステルカラーでシンプルに", en: "a simple solid pastel-colored background"},
+studio: { ja: "背景はプロのスタジオ撮影のような柔らかなグラデーション", en: "a soft studio-photography gradient background"},
+room: { ja: "背景は温かみのある部屋のインテリア", en: "a cozy room interior in the background"},
+nature: { ja: "背景は明るい自然の屋外", en: "a bright outdoor nature background"}
+}
+};
+
+var DEFAULTS = {
+style: "figure", character: "girl", hair: "twintail", hairColor: "pink",
+outfit: "hoodie", accessory: "catears", expression: "smile",
+mood: "cute", palette: "pastel", framing: "full", background: "white"
+};
+
+var PRESETS = {
+"figure-girl": { style: "figure", character: "girl", hair: "twintail", hairColor: "pink", outfit: "hoodie", accessory: "catears", expression: "smile", mood: "cute", palette: "pastel", framing: "full", background: "white"},
+"robot-buddy": { style: "pixar", character: "robot", hair: "none", hairColor: "white", outfit: "future", accessory: "headphone", expression: "genki", mood: "pop", palette: "vivid", framing: "full", background: "white"},
+"cat-mascot": { style: "clay", character: "cat", hair: "none", hairColor: "orange", outfit: "knit", accessory: "scarf", expression: "relaxed", mood: "yuru", palette: "earth", framing: "full", background: "pastelbg"},
+"mage": { style: "anime3d", character: "mage", hair: "long", hairColor: "blue", outfit: "robe", accessory: "wand", expression: "wink", mood: "mystic", palette: "cold", framing: "full", background: "white"}
+};
+
+var state = {};
+var lang = "ja";
+
+/* ---------- 選択UI ---------- */
+var groups = document.querySelectorAll("fieldset[data-group]");
+groups.forEach(function (fs) {
+var group = fs.getAttribute("data-group");
+fs.querySelectorAll(".chip").forEach(function (chip) {
+chip.setAttribute("aria-pressed", "false");
+chip.addEventListener("click", function () {
+state[group] = chip.getAttribute("data-value");
+syncChips();
+render();
+});
+});
+});
+
+function syncChips() {
+groups.forEach(function (fs) {
+var group = fs.getAttribute("data-group");
+fs.querySelectorAll(".chip").forEach(function (chip) {
+chip.setAttribute("aria-pressed", chip.getAttribute("data-value") === state[group]? "true": "false");
+});
+});
+}
+
+/* ---------- プロンプト生成 ---------- */
+function t(group, key) {
+var entry = DICT[group] && DICT[group][key];
+return entry? entry[lang]: "";
+}
+
+function buildPrompt() {
+var name = document.getElementById("charName").value.trim();
+var extra = document.getElementById("extraLook").value.trim();
+var hairTxt = t("hair", state.hair);
+var hairColTxt = t("hairColor", state.hairColor);
+var accTxt = t("accessory", state.accessory);
+
+if (lang === "ja") {
+var lines = [];
+var main = "";
+lines.push(main);
+var desc = t("style", state.style) + "として、" + t("character", state.character) + "を描いてください。";
+if (name) desc += "設定：" + name + "。";
+lines.push(desc);
+
+var looks = [];
+if (hairTxt) looks.push("髪型は" + hairColTxt + "の" + hairTxt);
+else if (state.character === "cat" || state.character === "rabbit" || state.character === "bear") looks.push("毛の色は" + hairColTxt);
+looks.push(t("outfit", state.outfit));
+if (accTxt) looks.push(accTxt);
+if (extra) looks.push(extra);
+lines.push("見た目：" + looks.join("、") + "。");
+
+lines.push("表情と雰囲気：" + t("expression", state.expression) + "、全体に" + t("mood", state.mood) + "雰囲気。カラーテーマは" + t("palette", state.palette) + "。");
+lines.push("構図：" + t("framing", state.framing) + "。" + t("background", state.background) + "。");
+lines.push("仕上がり：アバターやアイコンへの加工がしやすいよう、輪郭をはっきりと、顔のパーツは左右バランスよく、指先まで自然に描いてください。画像内に文字・ロゴ・透かしは入れないでください。");
+return lines.join("\n");
+} else {
+var elines = [];
+elines.push("[Base image for an avatar — 3D character]");
+var edesc = "Please draw " + t("character", state.character) + " as " + t("style", state.style) + ".";
+if (name) edesc += " Concept: " + name + ".";
+elines.push(edesc);
+
+var elooks = [];
+if (hairTxt) elooks.push(hairColTxt + " " + hairTxt.replace(/^a /, ""));
+else if (state.character === "cat" || state.character === "rabbit" || state.character === "bear") elooks.push(hairColTxt + " fur");
+elooks.push(t("outfit", state.outfit));
+if (accTxt) elooks.push(accTxt);
+if (extra) elooks.push(extra);
+elines.push("Appearance: " + elooks.join(", ") + ".");
+
+elines.push("Expression & mood: " + t("expression", state.expression) + ", overall " + t("mood", state.mood) + " vibe, " + t("palette", state.palette) + ".");
+elines.push("Composition: " + t("framing", state.framing) + ". " + t("background", state.background) + ".");
+elines.push("Finish: keep the silhouette clean and well-defined so it is easy to turn into an avatar/icon, with balanced symmetrical facial features and natural hands. No text, logos, or watermarks in the image.");
+return elines.join("\n");
+}
+}
+
+function buildRequest() {
+var styleJa = DICT.style[state.style].ja;
+var charJa = DICT.character[state.character].ja;
+return "この画像を元に、私のアバターを作ってください。\n" +
+"もとの画像は「" + styleJa + "」の" + charJa + "です。雰囲気と特徴はこの画像のままに、" +
+"アイコンとして使いやすい形でアバター候補をいくつか見せてもらえると嬉しいです。";
+}
+
+function render() {
+document.getElementById("promptOut").textContent = buildPrompt();
+document.getElementById("requestOut").textContent = buildRequest();
+}
+
+/* ---------- 入力 ---------- */
+document.getElementById("charName").addEventListener("input", render);
+document.getElementById("extraLook").addEventListener("input", render);
+
+/* ---------- 言語タブ ---------- */
+var tabJa = document.getElementById("tab-ja");
+var tabEn = document.getElementById("tab-en");
+function setLang(next) {
+lang = next;
+tabJa.setAttribute("aria-selected", lang === "ja"? "true": "false");
+tabEn.setAttribute("aria-selected", lang === "en"? "true": "false");
+render();
+}
+tabJa.addEventListener("click", function () { setLang("ja");});
+tabEn.addEventListener("click", function () { setLang("en");});
+
+/* ---------- プリセット / ランダム / リセット ---------- */
+function applyState(next) {
+Object.keys(next).forEach(function (k) { state[k] = next[k];});
+syncChips();
+render();
+}
+document.querySelectorAll(".preset").forEach(function (btn) {
+btn.addEventListener("click", function () {
+applyState(PRESETS[btn.getAttribute("data-preset")]);
+showToast("プリセットを反映しました");
+});
+});
+document.getElementById("randomBtn").addEventListener("click", function () {
+var next = {};
+Object.keys(DICT).forEach(function (group) {
+var keys = Object.keys(DICT[group]);
+next[group] = keys[Math.floor(Math.random() * keys.length)];
+});
+/* 動物・ロボットに髪型が付いたら「なし」に寄せる */
+if (["robot", "cat", "rabbit", "bear"].indexOf(next.character) >= 0) next.hair = "none";
+if (next.character === "mage") next.outfit = "robe";
+applyState(next);
+showToast("おまかせで組み合わせました");
+});
+document.getElementById("resetBtn").addEventListener("click", function () {
+applyState(DEFAULTS);
+document.getElementById("charName").value = "";
+document.getElementById("extraLook").value = "";
+render();
+showToast("最初の設定に戻しました");
+});
+
+/* ---------- コピー ---------- */
+var toastTimer = null;
+function showToast(msg) {
+var toast = document.getElementById("toast");
+toast.textContent = msg;
+toast.classList.add("show");
+if (toastTimer) clearTimeout(toastTimer);
+toastTimer = setTimeout(function () { toast.classList.remove("show");}, 2200);
+}
+function copyText(text, doneMsg) {
+function fallback() {
+var ta = document.createElement("textarea");
+ta.value = text;
+ta.style.position = "fixed";
+ta.style.opacity = "0";
+document.body.appendChild(ta);
+ta.select();
+try { document.execCommand("copy"); showToast(doneMsg);}
+catch (e) { showToast("コピーできませんでした。長押しで選択してください");}
+document.body.removeChild(ta);
+}
+if (navigator.clipboard && navigator.clipboard.writeText) {
+navigator.clipboard.writeText(text).then(function () { showToast(doneMsg);}, fallback);
+} else {
+fallback();
+}
+}
+document.getElementById("copyPromptBtn").addEventListener("click", function () {
+copyText(buildPrompt(), lang === "ja"? "プロンプトをコピーしました": "Prompt copied");
+});
+document.getElementById("copyRequestBtn").addEventListener("click", function () {
+copyText(buildRequest(), "Museへの依頼文をコピーしました");
+});
+
+/* ---------- 初期化 ---------- */
+applyState(DEFAULTS);
+})();
+</script>
+</body>
+</html>
